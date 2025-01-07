@@ -1,68 +1,63 @@
 package parser;
 
+import dto.InvoiceDTO;
+import dto.LineItemDTO;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.ArrayList;
 
-public class DocxInvoiceParser implements InvoiceParser {
-    @Override
-    public Map<String, String> parse(File file) throws Exception {
-        Map<String, String> data = new HashMap<>();
-        try (FileInputStream fis = new FileInputStream(file);
-             XWPFDocument document = new XWPFDocument(fis)) {
-            StringBuilder text = new StringBuilder();
-            document.getParagraphs().forEach(p -> text.append(p.getText()).append("\n"));
+@Component
+public class DocxInvoiceParser {
 
-            // Extract Invoice Number
-            data.put("InvoiceNumber", extractValue(text.toString(), "Invoice Number:\\s*(\\S+)"));
-
-            // Extract Date
-            data.put("Date", extractValue(text.toString(), "Date:\\s*(\\S+)"));
-            
-            // Extract Vendor and Buyer Information
-            data.put("Vendor", extractValue(text.toString(), "Vendor:\\s*(.*?)\\n"));
-            data.put("Buyer", extractValue(text.toString(), "Buyer:\\s*(.*?)\\n"));
-            
-            // Extract Line Items (description, quantity, unit price, total price)
-            String lineItems = extractLineItems(text.toString());
-            data.put("LineItems", lineItems);
-            
-            // Extract Subtotal, Taxes, Discounts, Total Amount
-            data.put("Subtotal", extractValue(text.toString(), "Subtotal:\\s*(\\S+)"));
-            data.put("Taxes", extractValue(text.toString(), "Taxes:\\s*(\\S+)"));
-            data.put("Discounts", extractValue(text.toString(), "Discounts:\\s*(\\S+)"));
-            data.put("TotalAmount", extractValue(text.toString(), "Total Amount:\\s*(\\S+)"));
-            
-            // Extract Payment Terms
-            data.put("PaymentTerms", extractValue(text.toString(), "Payment Terms:\\s*(.*?)\\n"));
-        }
-        return data;
+    public InvoiceDTO parseDoc(File docFile) throws IOException {
+        String text = extractTextFromDoc(docFile);
+        InvoiceDTO invoice = new InvoiceDTO();
+        invoice.setInvoiceNumber(extractInvoiceNumber(text));
+        invoice.setInvoiceDate(extractInvoiceDate(text));
+        invoice.setLineItems(extractLineItems(text));
+        return invoice;
     }
 
-    private String extractValue(String text, String regex) {
-        Pattern pattern = Pattern.compile(regex);
+    private String extractTextFromDoc(File docFile) throws IOException {
+        FileInputStream fis = new FileInputStream(docFile);
+        XWPFDocument document = new XWPFDocument(fis);
+        StringBuilder text = new StringBuilder();
+        document.getParagraphs().forEach(para -> text.append(para.getText()).append("\n"));
+        fis.close();
+        return text.toString();
+    }
+
+    private String extractInvoiceNumber(String text) {
+        Pattern pattern = Pattern.compile("Invoice Number:\\s*(\\S+)");
         Matcher matcher = pattern.matcher(text);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        return null;
+        return matcher.find() ? matcher.group(1) : null;
     }
 
-    private String extractLineItems(String text) {
-        StringBuilder lineItems = new StringBuilder();
-        Pattern pattern = Pattern.compile("(\\d+)\\s*(\\D+)\\s*(\\d+\\.\\d{2})\\s*(\\d+\\.\\d{2})");
+    private String extractInvoiceDate(String text) {
+        Pattern pattern = Pattern.compile("Invoice Date:\\s*(\\S+)");
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private List<LineItemDTO> extractLineItems(String text) {
+        List<LineItemDTO> lineItems = new ArrayList<>();
+        Pattern pattern = Pattern.compile("([A-Za-z\\s]+)\\s+(\\d+)\\s+(\\d+\\.\\d{2})\\s+(\\d+\\.\\d{2})");
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
-            lineItems.append("Description: ").append(matcher.group(2))
-                    .append(", Quantity: ").append(matcher.group(1))
-                    .append(", Unit Price: ").append(matcher.group(3))
-                    .append(", Total: ").append(matcher.group(4)).append("\n");
+            LineItemDTO item = new LineItemDTO();
+            item.setDescription(matcher.group(1));
+            item.setQuantity(Integer.parseInt(matcher.group(2)));
+            item.setUnitPrice(Double.parseDouble(matcher.group(3)));
+            item.setTotalPrice(Double.parseDouble(matcher.group(4)));
+            lineItems.add(item);
         }
-        return lineItems.toString();
+        return lineItems;
     }
 }

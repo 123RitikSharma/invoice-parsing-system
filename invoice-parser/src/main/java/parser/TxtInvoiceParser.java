@@ -1,49 +1,59 @@
 package parser;
 
+import dto.InvoiceDTO;
+import dto.LineItemDTO;
+import org.springframework.stereotype.Component;
+
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.ArrayList;
 
-public class TxtInvoiceParser implements InvoiceParser {
-    @Override
-    public Map<String, String> parse(File file) throws Exception {
-        String text = Files.readString(file.toPath());
-        Map<String, String> data = new HashMap<>();
+@Component
+public class TxtInvoiceParser {
 
-        // Extracting fields like InvoiceNumber, Date, Vendor, etc.
-        data.put("InvoiceNumber", extractValue(text, "Invoice Number:"));
-        data.put("Date", extractValue(text, "Date:"));
-        data.put("Vendor", extractValue(text, "Vendor:"));
-        data.put("Buyer", extractValue(text, "Buyer:"));
-        data.put("TotalAmount", extractValue(text, "Total Amount:"));
-        data.put("Taxes", extractValue(text, "Taxes:"));
-        data.put("Subtotal", extractValue(text, "Subtotal:"));
-        data.put("Discounts", extractValue(text, "Discounts:"));
-        data.put("PaymentTerms", extractValue(text, "Payment Terms:"));
-        data.put("LineItems", extractLineItems(text)); // Assuming line items are a list of items
-
-        return data;
+    public InvoiceDTO parseTxt(File txtFile) throws IOException {
+        String text = extractTextFromTxt(txtFile);
+        InvoiceDTO invoice = new InvoiceDTO();
+        invoice.setInvoiceNumber(extractInvoiceNumber(text));
+        invoice.setInvoiceDate(extractInvoiceDate(text));
+        invoice.setLineItems(extractLineItems(text));
+        return invoice;
     }
 
-    private String extractValue(String text, String key) {
-        int start = text.indexOf(key);
-        if (start == -1) return null;
-        start += key.length();
-        int end = text.indexOf("\n", start);
-        return end == -1 ? text.substring(start).trim() : text.substring(start, end).trim();
+    private String extractTextFromTxt(File txtFile) throws IOException {
+        List<String> lines = Files.readAllLines(Paths.get(txtFile.toURI()));
+        return String.join("\n", lines);
     }
 
-    private String extractLineItems(String text) {
-        // Example of line items extraction (this can be more sophisticated depending on your file structure)
-        int start = text.indexOf("Line Items:");
-        if (start == -1) return null;
-        
-        // Assuming line items are listed under "Line Items:"
-        start += "Line Items:".length();
-        int end = text.indexOf("\n", start);
-        if (end == -1) end = text.length();
+    private String extractInvoiceNumber(String text) {
+        Pattern pattern = Pattern.compile("Invoice Number:\\s*(\\S+)");
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
 
-        return text.substring(start, end).trim();
+    private String extractInvoiceDate(String text) {
+        Pattern pattern = Pattern.compile("Invoice Date:\\s*(\\S+)");
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private List<LineItemDTO> extractLineItems(String text) {
+        List<LineItemDTO> lineItems = new ArrayList<>();
+        Pattern pattern = Pattern.compile("([A-Za-z\\s]+)\\s+(\\d+)\\s+(\\d+\\.\\d{2})\\s+(\\d+\\.\\d{2})");
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            LineItemDTO item = new LineItemDTO();
+            item.setDescription(matcher.group(1));
+            item.setQuantity(Integer.parseInt(matcher.group(2)));
+            item.setUnitPrice(Double.parseDouble(matcher.group(3)));
+            item.setTotalPrice(Double.parseDouble(matcher.group(4)));
+            lineItems.add(item);
+        }
+        return lineItems;
     }
 }
