@@ -1,8 +1,9 @@
 package parser;
 
+import dto.InvoiceDTO;
 import java.io.File;
-import java.util.Map;
+import java.io.InputStream;
 
 public interface InvoiceParser {
-    Map<String, String> parse(File file) throws Exception;
+    InvoiceDTO parse(InputStream inputStream) throws Exception;
 }

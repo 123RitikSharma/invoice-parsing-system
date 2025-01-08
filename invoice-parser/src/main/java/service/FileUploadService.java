@@ -1,36 +1,64 @@
-package service;  // Package declaration should match the directory structure
+package service;
 
+import dto.InvoiceDTO;
 import exception.InvalidFileTypeException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Arrays;
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class FileUploadService {
 
-    private static final List<String> SUPPORTED_FILE_TYPES = Arrays.asList("pdf", "docx", "txt", "jpg", "jpeg", "png");
+    @Autowired
+    private InvoiceParseService invoiceParseService;
 
     // Validate the file type
     public void validateFileType(MultipartFile file) throws InvalidFileTypeException {
-        String fileExtension = getFileExtension(file.getOriginalFilename());
-        if (!SUPPORTED_FILE_TYPES.contains(fileExtension)) {
-            throw new InvalidFileTypeException("Unsupported file type. Supported types: PDF, DOCX, TXT, JPG, PNG.");
+        String fileName = file.getOriginalFilename();
+        String extension = fileName.substring(fileName.lastIndexOf(".") + 1);
+
+        if (!"pdf".equalsIgnoreCase(extension) && !"docx".equalsIgnoreCase(extension) && !"txt".equalsIgnoreCase(extension)) {
+            throw new InvalidFileTypeException("Invalid file type. Only PDF, DOCX, and TXT files are allowed.");
         }
     }
 
-    // Process the file (placeholder logic)
+    // Process the uploaded file and convert to JSON
     public void processFile(MultipartFile file) {
-        // Placeholder for file processing logic
-        System.out.println("Processing file: " + file.getOriginalFilename());
+        try {
+            // Get the file type (extension)
+            String fileExtension = getFileExtension(file);
+
+            // Parse the file to get InvoiceDTO
+            InvoiceDTO invoiceDTO = invoiceParseService.parseFile(file.getInputStream(), fileExtension);
+
+            // Convert InvoiceDTO to JSON
+            String jsonInvoice = convertToJson(invoiceDTO);
+
+            // Print the structured JSON to the terminal
+            System.out.println("=== Structured JSON Output ===");
+            System.out.println(jsonInvoice);
+            System.out.println("=============================");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    // Helper method to get the file extension
-    private String getFileExtension(String filename) {
-        if (filename == null || !filename.contains(".")) {
-            return "";
+    // Helper method to get file extension
+    private String getFileExtension(MultipartFile file) {
+        String fileName = file.getOriginalFilename();
+        return fileName != null ? fileName.substring(fileName.lastIndexOf(".") + 1) : "";
+    }
+
+    // Convert InvoiceDTO to structured JSON using Jackson's ObjectMapper
+    private String convertToJson(InvoiceDTO invoiceDTO) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(invoiceDTO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{}";
         }
-        return filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
     }
 }

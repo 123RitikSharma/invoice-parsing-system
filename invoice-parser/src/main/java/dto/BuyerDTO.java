@@ -1,11 +1,14 @@
 package dto;
 
 public class BuyerDTO {
+
     private String name;
     private String address;
     private String contact;
 
-    // Getters and Setters
+
+
+	// Getters and Setters
     public String getName() {
         return name;
     }
@@ -30,4 +33,3 @@ public class BuyerDTO {
         this.contact = contact;
     }
 }
-

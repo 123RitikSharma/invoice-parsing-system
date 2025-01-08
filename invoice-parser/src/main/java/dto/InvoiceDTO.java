@@ -5,6 +5,7 @@ import java.util.List;
 public class InvoiceDTO {
     private String invoiceNumber;
     private String invoiceDate;
+    private String paymentTerms;
     private VendorDTO vendor;
     private BuyerDTO buyer;
     private List<LineItemDTO> lineItems;
@@ -28,6 +29,14 @@ public class InvoiceDTO {
 
     public void setInvoiceDate(String invoiceDate) {
         this.invoiceDate = invoiceDate;
+    }
+
+    public String getPaymentTerms() {
+        return paymentTerms;
+    }
+
+    public void setPaymentTerms(String paymentTerms) {
+        this.paymentTerms = paymentTerms;
     }
 
     public VendorDTO getVendor() {

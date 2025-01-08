@@ -1,12 +1,14 @@
 package dto;
 
 public class LineItemDTO {
+
     private String description;
     private int quantity;
     private double unitPrice;
     private double totalPrice;
 
-    // Getters and Setters
+
+	// Getters and Setters
     public String getDescription() {
         return description;
     }

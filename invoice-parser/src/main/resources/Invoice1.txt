@@ -1,0 +1,16 @@
+Invoice Number: INV-12345
+Date: 2025-01-05
+Vendor: ABC Supplies Inc.
+Buyer: XYZ Corporation
+Line Items:
+  1. Item: Office Chair - Quantity: 2 - Unit Price: $50.00 - Total Price: $100.00
+  2. Item: Desk Lamp - Quantity: 1 - Unit Price: $30.00 - Total Price: $30.00
+Subtotal: $130.00
+Taxes: $13.00
+Discounts: $10.00
+Total Amount: $133.00
+Payment Terms: Net 30
+Invoice Currency: USD
+Shipping Charges: $5.00
+Invoice Notes: Please pay within 30 days.
+Terms and Conditions: All sales are final, no returns after 30 days.

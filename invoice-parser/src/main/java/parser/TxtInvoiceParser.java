@@ -1,59 +1,128 @@
 package parser;
 
-import dto.InvoiceDTO;
-import dto.LineItemDTO;
-import org.springframework.stereotype.Component;
+import dto.*;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.ArrayList;
 
-@Component
-public class TxtInvoiceParser {
+public class TxtInvoiceParser implements InvoiceParser {
 
-    public InvoiceDTO parseTxt(File txtFile) throws IOException {
-        String text = extractTextFromTxt(txtFile);
+    @Override
+    public InvoiceDTO parse(InputStream inputStream) throws Exception {
+        // Use InputStreamReader and BufferedReader to read the InputStream
+        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+        StringBuilder text = new StringBuilder();
+        String line;
+        
+        while ((line = reader.readLine()) != null) {
+            text.append(line).append("\n"); // Append line to text
+        }
+
+        String invoiceText = text.toString();
+        
         InvoiceDTO invoice = new InvoiceDTO();
-        invoice.setInvoiceNumber(extractInvoiceNumber(text));
-        invoice.setInvoiceDate(extractInvoiceDate(text));
-        invoice.setLineItems(extractLineItems(text));
+        invoice.setInvoiceNumber(extractInvoiceNumber(invoiceText));
+        invoice.setInvoiceDate(extractInvoiceDate(invoiceText));
+        invoice.setVendor(extractVendor(invoiceText));
+        invoice.setBuyer(extractBuyer(invoiceText));
+        invoice.setLineItems(extractLineItems(invoiceText));
+        invoice.setSubtotal(extractSubtotal(invoiceText));
+        invoice.setTax(extractTax(invoiceText));
+        invoice.setDiscount(extractDiscount(invoiceText));
+        invoice.setTotalAmount(extractTotalAmount(invoiceText));
+        invoice.setPaymentTerms(extractPaymentTerms(invoiceText));
+        
         return invoice;
     }
 
-    private String extractTextFromTxt(File txtFile) throws IOException {
-        List<String> lines = Files.readAllLines(Paths.get(txtFile.toURI()));
-        return String.join("\n", lines);
-    }
-
     private String extractInvoiceNumber(String text) {
-        Pattern pattern = Pattern.compile("Invoice Number:\\s*(\\S+)");
-        Matcher matcher = pattern.matcher(text);
-        return matcher.find() ? matcher.group(1) : null;
+        return extractString(text, "\\b(?:Invoice Number[:\\-\\s]*)?(INV[- ]?\\d+)", "Unknown");
     }
 
     private String extractInvoiceDate(String text) {
-        Pattern pattern = Pattern.compile("Invoice Date:\\s*(\\S+)");
-        Matcher matcher = pattern.matcher(text);
-        return matcher.find() ? matcher.group(1) : null;
+        return extractString(text, "\\b(?:Date[:\\-\\s]*)?(\\d{4}-\\d{2}-\\d{2})", "Unknown");
+    }
+
+    private VendorDTO extractVendor(String text) {
+        VendorDTO vendor = new VendorDTO();
+        vendor.setName(extractString(text, "\\b(?:Vendor[:\\-\\s]*)?(.*)", "Unknown"));
+        return vendor;
+    }
+
+    private BuyerDTO extractBuyer(String text) {
+        BuyerDTO buyer = new BuyerDTO();
+        buyer.setName(extractString(text, "\\b(?:Buyer[:\\-\\s]*)?(.*)", "Unknown"));
+        return buyer;
     }
 
     private List<LineItemDTO> extractLineItems(String text) {
-        List<LineItemDTO> lineItems = new ArrayList<>();
-        Pattern pattern = Pattern.compile("([A-Za-z\\s]+)\\s+(\\d+)\\s+(\\d+\\.\\d{2})\\s+(\\d+\\.\\d{2})");
+        List<LineItemDTO> items = new ArrayList<>();
+        Pattern pattern = Pattern.compile("\\bItem[:\\s]*(.*?)\\s*-\\s*Quantity[:\\s]*(\\d+)\\s*-\\s*Unit Price[:\\s]*\\$(\\d+\\.\\d{2})\\s*-\\s*Total Price[:\\s]*\\$(\\d+\\.\\d{2})");
+
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
             LineItemDTO item = new LineItemDTO();
-            item.setDescription(matcher.group(1));
+            item.setDescription(matcher.group(1).trim());
             item.setQuantity(Integer.parseInt(matcher.group(2)));
             item.setUnitPrice(Double.parseDouble(matcher.group(3)));
             item.setTotalPrice(Double.parseDouble(matcher.group(4)));
-            lineItems.add(item);
+            items.add(item);
         }
-        return lineItems;
+        return items;
+    }
+
+    private double extractSubtotal(String text) {
+        return extractDouble(text, "\\bSubtotal[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+    }
+
+    private double extractTax(String text) {
+        return extractDouble(text, "\\bTaxes[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+    }
+
+    private double extractDiscount(String text) {
+        return extractDouble(text, "\\bDiscounts[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+    }
+
+    private double extractTotalAmount(String text) {
+        return extractDouble(text, "\\bTotal Amount[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+    }
+
+    private String extractPaymentTerms(String text) {
+        return extractString(text, "\\bPayment Terms[:\\s]*(.*)", "Unknown");
+    }
+
+    private String extractInvoiceCurrency(String text) {
+        return extractString(text, "\\bInvoice Currency[:\\s]*(\\w+)", "Unknown");
+    }
+
+    private double extractShippingCharges(String text) {
+        return extractDouble(text, "\\bShipping Charges[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+    }
+
+    private String extractInvoiceNotes(String text) {
+        return extractString(text, "\\bInvoice Notes[:\\s]*(.*)", "Unknown");
+    }
+
+    private String extractTermsAndConditions(String text) {
+        return extractString(text, "\\bTerms and Conditions[:\\s]*(.*)", "Unknown");
+    }
+
+    // Utility Methods for Parsing
+
+    private String extractString(String text, String regex, String defaultValue) {
+        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? matcher.group(1).trim() : defaultValue;
+    }
+
+    private double extractDouble(String text, String regex, double defaultValue) {
+        Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() ? Double.parseDouble(matcher.group(1).trim()) : defaultValue;
     }
 }
