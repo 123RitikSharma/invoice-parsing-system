@@ -1,4 +1,6 @@
 package com.springboot.invoiceparser;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import dto.*;
 import parser.*;
@@ -33,8 +35,8 @@ class InvoiceParseServiceTest {
     @Mock
     private TxtInvoiceParser txtInvoiceParser;
 
-    @Mock
-    private ImageInvoiceParser imageInvoiceParser;  // Add the image parser mock
+//    @Mock
+//    private ImageInvoiceParser imageInvoiceParser;  // Add the image parser mock
 
     @BeforeEach
     void setUp() {
@@ -91,6 +93,28 @@ class InvoiceParseServiceTest {
         printExtractedFields(result);
         assertNotNull(result);
     }
+    @Test
+    void testParseInvalidZipFile() throws Exception {
+        // Get the URL of the test ZIP file from resources (ensure this file exists)
+        URL zipUrl = getClass().getClassLoader().getResource("demo.zip");
+        if (zipUrl == null) {
+            throw new IllegalArgumentException("ZIP File not found!");
+        }
+        InputStream zipInputStream = zipUrl.openStream(); // Open InputStream from the ZIP file URL
+
+        // Verify that an IllegalArgumentException is thrown when parsing a ZIP file
+        try {
+            invoiceParseService.parseFile(zipInputStream, "zip");
+            fail("Expected IllegalArgumentException to be thrown");
+        } catch (IllegalArgumentException e) {
+            // Assert that the exception message is as expected
+            assertEquals("Unsupported file type: zip", e.getMessage());
+        }
+    }
+
+
+
+
 
 //    // Test for JPG Image
 //    @Test
@@ -111,22 +135,22 @@ class InvoiceParseServiceTest {
 //    }
 
     // Test for PNG Image
-    @Test
-    void testParsePNGImage() throws Exception {
-        // Mock Image parser behavior (PNG)
-        URL pngUrl = getClass().getClassLoader().getResource("Invoice.png");
-        if (pngUrl == null) {
-            throw new IllegalArgumentException("File not found!");
-        }
-        InputStream pngInputStream = pngUrl.openStream(); // Open InputStream from URL
-        InvoiceDTO mockInvoice = createMockExtractedInvoice();
-        when(imageInvoiceParser.parse(pngInputStream)).thenReturn(mockInvoice);
-
-        // Parse the file and assert the extracted data
-        InvoiceDTO result = invoiceParseService.parseFile(pngInputStream, "png");
-        printExtractedFields(result);
-        assertNotNull(result);
-    }
+//    @Test
+//    void testParsePNGImage() throws Exception {
+//        // Mock Image parser behavior (PNG)
+//        URL pngUrl = getClass().getClassLoader().getResource("Invoice.png");
+//        if (pngUrl == null) {
+//            throw new IllegalArgumentException("File not found!");
+//        }
+//        InputStream pngInputStream = pngUrl.openStream(); // Open InputStream from URL
+//        InvoiceDTO mockInvoice = createMockExtractedInvoice();
+//        when(imageInvoiceParser.parse(pngInputStream)).thenReturn(mockInvoice);
+//
+//        // Parse the file and assert the extracted data
+//        InvoiceDTO result = invoiceParseService.parseFile(pngInputStream, "png");
+//        printExtractedFields(result);
+//        assertNotNull(result);
+//    }
 
     private void printExtractedFields(InvoiceDTO invoice) {
         System.out.println("=== Extracted Fields ===");

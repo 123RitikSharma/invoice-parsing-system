@@ -6,9 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class FileUploadService {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileUploadService.class);
 
     @Autowired
     private InvoiceParseService invoiceParseService;
@@ -23,7 +27,7 @@ public class FileUploadService {
         }
     }
 
-    // Process the uploaded file and convert to JSON
+    // Process the uploaded file and convert to JSON (Single file)
     public void processFile(MultipartFile file) {
         try {
             // Get the file type (extension)
@@ -36,12 +40,24 @@ public class FileUploadService {
             String jsonInvoice = convertToJson(invoiceDTO);
 
             // Print the structured JSON to the terminal
-            System.out.println("=== Structured JSON Output ===");
-            System.out.println(jsonInvoice);
-            System.out.println("=============================");
+            logger.info("=== Structured JSON Output ===");
+            logger.info(jsonInvoice);
+            logger.info("=============================");
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error processing the file", e);
+        }
+    }
+
+    // Process multiple files in bulk
+    public void processBulkFiles(MultipartFile[] files) {
+        for (MultipartFile file : files) {
+            try {
+                // Process each file one by one
+                processFile(file);
+            } catch (Exception e) {
+                logger.error("Error processing the file " + file.getOriginalFilename(), e);
+            }
         }
     }
 
@@ -57,7 +73,7 @@ public class FileUploadService {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(invoiceDTO);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error converting InvoiceDTO to JSON", e);
             return "{}";
         }
     }

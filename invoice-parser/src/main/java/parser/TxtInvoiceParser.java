@@ -1,7 +1,6 @@
 package parser;
 
 import dto.*;
-
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
@@ -9,7 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.stereotype.Component;
 
+@Component 
 public class TxtInvoiceParser implements InvoiceParser {
 
     @Override
@@ -41,29 +42,33 @@ public class TxtInvoiceParser implements InvoiceParser {
     }
 
     private String extractInvoiceNumber(String text) {
-        return extractString(text, "\\b(?:Invoice Number[:\\-\\s]*)?(INV[- ]?\\d+)", "Unknown");
+        return extractString(text, "\\bInvoice Number[:\\-\\s]*(INV[- ]?\\d+)", "Unknown");
     }
 
     private String extractInvoiceDate(String text) {
-        return extractString(text, "\\b(?:Date[:\\-\\s]*)?(\\d{4}-\\d{2}-\\d{2})", "Unknown");
+        return extractString(text, "\\bDate[:\\-\\s]*(\\w+ \\d{1,2}, \\d{4})", "Unknown");
     }
 
     private VendorDTO extractVendor(String text) {
         VendorDTO vendor = new VendorDTO();
-        vendor.setName(extractString(text, "\\b(?:Vendor[:\\-\\s]*)?(.*)", "Unknown"));
+        // Improved regex to extract vendor details
+        String vendorName = extractString(text, "\\bVendor[:\\-\\s]*(.*?)(?=\\s*Buyer)", "Unknown");
+        vendor.setName(vendorName);
         return vendor;
     }
 
     private BuyerDTO extractBuyer(String text) {
         BuyerDTO buyer = new BuyerDTO();
-        buyer.setName(extractString(text, "\\b(?:Buyer[:\\-\\s]*)?(.*)", "Unknown"));
+        // Improved regex to extract buyer details
+        String buyerName = extractString(text, "\\bBuyer[:\\-\\s]*(.*?)(?=\\s*Item|\\s*Subtotal)", "Unknown");
+        buyer.setName(buyerName);
         return buyer;
     }
 
     private List<LineItemDTO> extractLineItems(String text) {
         List<LineItemDTO> items = new ArrayList<>();
         Pattern pattern = Pattern.compile("\\bItem[:\\s]*(.*?)\\s*-\\s*Quantity[:\\s]*(\\d+)\\s*-\\s*Unit Price[:\\s]*\\$(\\d+\\.\\d{2})\\s*-\\s*Total Price[:\\s]*\\$(\\d+\\.\\d{2})");
-
+        
         Matcher matcher = pattern.matcher(text);
         while (matcher.find()) {
             LineItemDTO item = new LineItemDTO();
@@ -81,11 +86,11 @@ public class TxtInvoiceParser implements InvoiceParser {
     }
 
     private double extractTax(String text) {
-        return extractDouble(text, "\\bTaxes[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+        return extractDouble(text, "\\bTaxes?:?[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
     }
 
     private double extractDiscount(String text) {
-        return extractDouble(text, "\\bDiscounts[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
+        return extractDouble(text, "\\bDiscount[:\\s]*\\$(\\d+\\.\\d{2})", 0.0);
     }
 
     private double extractTotalAmount(String text) {
@@ -93,7 +98,7 @@ public class TxtInvoiceParser implements InvoiceParser {
     }
 
     private String extractPaymentTerms(String text) {
-        return extractString(text, "\\bPayment Terms[:\\s]*(.*)", "Unknown");
+        return extractString(text, "\\bPayment Terms[:\\s]*(.*?)(?=\\s*Invoice Currency|\\s*$)", "Unknown");
     }
 
     private String extractInvoiceCurrency(String text) {

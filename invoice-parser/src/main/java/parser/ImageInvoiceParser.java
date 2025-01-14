@@ -15,6 +15,12 @@
 //
 //public class ImageInvoiceParser implements InvoiceParser {
 //
+//	@Override
+//	public InvoiceDTO parse(InputStream inputStream) throws Exception {
+//		// TODO Auto-generated method stub
+//		return null;
+//	}
+
 //    private Tesseract tesseract;
 //
 //    public ImageInvoiceParser() {
