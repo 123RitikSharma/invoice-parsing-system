@@ -37,12 +37,17 @@ public class PdfInvoiceParser implements InvoiceParser {
         return invoice;
     }
 
+    // Improved extraction for invoice number
     private String extractInvoiceNumber(String text) {
-        Pattern pattern = Pattern.compile("\\b(?:Invoice\\s*(?:No\\.|Number|#)?\\s*[:\\s-]*)\\s*(\\S+)", Pattern.CASE_INSENSITIVE);
+        Pattern pattern = Pattern.compile(
+            "\\b(?:Invoice\\s*(?:No\\.|Number|#)?\\s*[:\\s-]*)\\s*(\\S+)", 
+            Pattern.CASE_INSENSITIVE
+        );
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1) : "Unknown";
     }
 
+    // Improved extraction for invoice date
     private String extractInvoiceDate(String text) {
         Pattern pattern = Pattern.compile(
             "\\b(\\d{4}-\\d{2}-\\d{2})\\b|" +
@@ -63,26 +68,27 @@ public class PdfInvoiceParser implements InvoiceParser {
         return "Unknown";
     }
 
+    // Improved extraction for vendor (Bill To)
     private VendorDTO extractVendor(String text) {
         VendorDTO vendor = new VendorDTO();
-        Pattern vendorPattern = Pattern.compile("(?i)Bill To:\\s*(.*?)(\\n|$)");
-        String vendorName = extractGroup(text, vendorPattern, 1).trim();
-        vendor.setName(vendorName.isEmpty() ? "Unknown" : vendorName);
+        Pattern vendorPattern = Pattern.compile("(?i)Bill To:\\s*(.*?)(?=\\n|Ship To:)");
+        vendor.setName(extractGroup(text, vendorPattern, 1).trim());
         vendor.setAddress("N/A");
         vendor.setContact("N/A");
         return vendor;
     }
 
+    // Improved extraction for buyer (Ship To)
     private BuyerDTO extractBuyer(String text) {
         BuyerDTO buyer = new BuyerDTO();
-        Pattern buyerPattern = Pattern.compile("(?i)Ship To:\\s*(.*?)(\\n|$)");
-        String buyerName = extractGroup(text, buyerPattern, 1).trim();
-        buyer.setName(buyerName.isEmpty() ? "Unknown" : buyerName);
+        Pattern buyerPattern = Pattern.compile("(?i)Ship To:\\s*(.*?)(?=\\n|Terms:)");
+        buyer.setName(extractGroup(text, buyerPattern, 1).trim());
         buyer.setAddress("N/A");
         buyer.setContact("N/A");
         return buyer;
     }
 
+    // Extract line items
     private List<LineItemDTO> extractLineItems(String text) {
         List<LineItemDTO> items = new ArrayList<>();
         Pattern lineItemPattern = Pattern.compile("^(.*?)\\s+(\\d+)\\s+\\$([0-9,.]+)\\s+\\$([0-9,.]+)", Pattern.MULTILINE);
@@ -99,8 +105,9 @@ public class PdfInvoiceParser implements InvoiceParser {
         return items;
     }
 
+    // Improved extraction for amounts
     private double extractSubtotal(String text) {
-        return extractAmount(text, "(?:Subtotal|SUB TOTAL|SUBTOTAL):");
+        return extractAmount(text, "(?:Subtotal|SUBTOTAL):");
     }
 
     private double extractTax(String text) {
@@ -116,23 +123,26 @@ public class PdfInvoiceParser implements InvoiceParser {
     }
 
     private double extractTotalAmount(String text) {
-        return extractAmount(text, "(?:Total|TOTAL AMOUNT|TOTAL):");
+        return extractAmount(text, "(?:Total|TOTAL):");
     }
 
+    // Extract payment terms
     private String extractPaymentTerms(String text) {
         Pattern pattern = Pattern.compile("(?i)(?:Terms|Payment Terms):\\s*(.*)");
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? matcher.group(1).trim() : "Unknown";
     }
 
+    // Generic method to extract amounts
     private double extractAmount(String text, String labelRegex) {
         Pattern pattern = Pattern.compile(labelRegex + "\\s*\\$([0-9,.]+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(text);
         return matcher.find() ? Double.parseDouble(matcher.group(1).replace(",", "")) : 0.0;
     }
 
+    // Generic method to extract groups
     private String extractGroup(String text, Pattern pattern, int group) {
         Matcher matcher = pattern.matcher(text);
-        return matcher.find() ? matcher.group(group) : "";
+        return matcher.find() ? matcher.group(group) : "Unknown";
     }
 }
